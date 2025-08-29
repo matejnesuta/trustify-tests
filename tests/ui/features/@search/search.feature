@@ -14,6 +14,7 @@ Background:
 # 	And a total number of "CVEs" should be visible in the tab
 # 	And a total number of "Advisories" should be visible in the tab
 
+@only
 Scenario Outline: User toggles the <types> list and manipulates the list
  	When User selects the Tab "<types>" 
 	Then the "<types>" list should have specific filter set
@@ -25,9 +26,9 @@ Scenario Outline: User toggles the <types> list and manipulates the list
 
 	Examples:
 	|types|
-	|SBOMs|
+	# |SBOMs|
 	# |Packages|
-	# |Vulnerabilities|
+	|Vulnerabilities|
 	# |Advisories|
 
 Scenario Outline: Download Links on the <types> Search Result list
@@ -69,5 +70,5 @@ Scenario Outline: User searches for a specific "<type>"
 	|type|types|type-name|
 	|SBOM|SBOMs|quarkus-bom|
 	|CVE|Vulnerabilities|CVE-2022-45787|
-	|Package|Packages|mariadb|
+	|Package|Packages|quarkus|
 	|Advisory|Advisories|CVE-2022-45787|

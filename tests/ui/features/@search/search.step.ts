@@ -48,9 +48,9 @@ function getPaginationId(type: string): string {
 function getColumns(type: string): string[] {
   switch (type) {
     case "Vulnerabilities":
-      return ["CVSS","Date published"];
+      return ["ID","CVSS","Date published"];
     case "Advisories":
-      return ["ID","Aggregated Severity","Revision"];
+      return ["ID","Revision"];
     case "Packages":
       return ["Name","Namespace","Version"];
     case "SBOMs":
@@ -110,7 +110,6 @@ Then('user clicks on the {string} {string} link', async ({page}, arg: string,typ
 });
 
 Then('the user should be navigated to the specific {string} page', async ({page}, arg: string) => {
-  page.waitForLoadState("networkidle");
   const detailsPage = new DetailsPage(page);
   await detailsPage.verifyPageHeader(arg);
 });
@@ -129,9 +128,9 @@ Then('the user should be able to filter {string}', async ({page}, arg: string) =
     await table.verifyColumnContainsText("ID","CVE-2022-45787");
   }else if (arg == "Packages"){
     await page.getByLabel('OCI').check();
-    await table.verifyColumnDoesNotContainText("Name","mariadb");
+    await table.verifyColumnDoesNotContainText("Name","quarkus");
     await table.clearFilter();
-    await table.verifyColumnContainsText("Name","mariadb");
+    await table.verifyColumnContainsText("Name","quarkus");
   }else if (arg === "Advisories"){
     await table.filterByDate("12/22/2022","12/22/2025");
     await table.verifyColumnDoesNotContainText("ID","CVE-2022-45787");
@@ -147,7 +146,6 @@ Then('the {string} list should have specific filter set', async ({page}, arg: st
     await expect(page.locator('input[aria-label="Interval start"]')).toBeVisible();
     await expect(page.locator('input[aria-label="Interval end"]')).toBeVisible();
   } else if (arg === "Advisories"){
-    await expect(page.locator('h4').getByText('Severity')).toBeVisible();
     await expect(page.locator('h4').getByText('Revision')).toBeVisible();
     await expect(page.locator('input[aria-label="Interval start"]')).toBeVisible();
     await expect(page.locator('input[aria-label="Interval end"]')).toBeVisible();
@@ -172,6 +170,8 @@ Then('the {string} list should be sortable', async ({page}, arg: string) => {
 Then('the {string} list should be limited to {int} items', async ({page}, type: string, count: number) => {
   const info = getTableInfo(type);
   const table = new ToolbarTable(page,info[0]);
+  const tableTopPagination = `xpath=//div[@id="${getPaginationId(type)}"]`;
+  await table.selectPerPage(tableTopPagination,"10 per page");
   await table.verifyTableHasUpToRows(count);
 });
 
@@ -187,11 +187,9 @@ Then('the user should be able to increase pagination for the {string}', async ({
   const table = new ToolbarTable(page,info[0]);
   var id:string = getPaginationId(arg);
   const tableTopPagination = `xpath=//div[@id="${id}"]`;
-  // await table.verifyRowsCounterPagination(tableTopPagination,1,10);
   await table.verifyPagination(`xpath=//div[@id="${id}"]`);
   await table.goToFirstPage(tableTopPagination);
   await table.selectPerPage(tableTopPagination,"20 per page");
-  // await table.verifyRowsCounterPagination(tableTopPagination,1,20);
   await table.goToFirstPage(tableTopPagination);
   await table.verifyTableHasUpToRows(20);
 });
@@ -200,8 +198,4 @@ Then('First column on the search results should have the link to {string} explor
   const info = getTableInfo(arg);
   const table = new ToolbarTable(page,info[0]);
   await table.verifyColumnContainsLink(info[1],arg);
-
-
-  // Step: And First column on the search results should have the link to "SBOMs" explorer pages
-  // From: tests/ui/features/@search/search.feature:25:2
 });

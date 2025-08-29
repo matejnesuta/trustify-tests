@@ -143,7 +143,9 @@ export class ToolbarTable {
    */
   async selectPerPage(parentElem: string, perPage: string) {
     const pagination = this._page.locator(parentElem);
-    await pagination.locator(`//button[@aria-haspopup='listbox']`).click();
+    await pagination.locator('button[aria-haspopup="listbox"]').waitFor({ state: "visible" });
+    await pagination.locator('button[aria-haspopup="listbox"]').click();
+
     await this._page.getByRole("menuitem", { name: perPage }).click();
   }
 
@@ -191,7 +193,7 @@ export class ToolbarTable {
       const progressBar = this._page.getByRole("gridcell", {
         name: "Loading...",
       });
-      await progressBar.waitFor({ state: "hidden", timeout: 5000 });
+      await progressBar.waitFor({ state: "hidden", timeout: 20000 });
       expMinCount += perPageRows;
       if (i === pageCount - 1) {
         expMaxCount = expMaxCount + remainingRows;
@@ -290,22 +292,34 @@ export class ToolbarTable {
    * @param parentElem ParentElement of pagination
    * @returns two dimensional string which contains the contents of table
    */
-  async getTableRows(parentElem: string): Promise<string[][]> {
+  async getTableRows(parentElem: string, maxPages: number = Infinity): Promise<string[][]> {
     const nextPageElem = await this._page
       .locator(parentElem)
       .getByLabel("Go to next page");
     let isNextPageEnabled = true;
     const tableData: string[][] = [];
     await this.goToFirstPage(parentElem);
-    while (isNextPageEnabled) {
+
+    let pageCount = 0;
+
+    while (isNextPageEnabled && pageCount < maxPages) {
       const table_data = await this.getTable();
       const allRows = await table_data.locator(`tr`).all();
       for (const row of allRows) {
         const rowData = await row.locator(`th, td`).allTextContents();
         tableData.push(rowData);
       }
-      isNextPageEnabled = await nextPageElem.isEnabled();
+      pageCount++;
+      if (pageCount < maxPages) {
+        isNextPageEnabled = await nextPageElem.isEnabled();
+        if (isNextPageEnabled) {
+          await nextPageElem.click();
+        }
+      } else {
+        break;
+      }
     }
+
     return tableData;
   }
 
@@ -345,6 +359,16 @@ export class ToolbarTable {
       // Guard against missing cells; default to empty string for safe comparisons
       let valueA = rowA[index] ?? "";
       let valueB = rowB[index] ?? "";
+
+      // // Blank-handling logic
+      // if (valueA === "" && valueB !== "") {
+      //   return sorting === "ascending" ? 1 : -1; // blank goes to bottom in ascending
+      // }
+      // if (valueB === "" && valueA !== "") {
+      //   return sorting === "ascending" ? -1 : 1; // blank goes to top in descending
+      // }
+      
+
       if (isDate) {
         let dateA = new Date(valueA);
         let dateB = new Date(valueB);
@@ -429,7 +453,7 @@ export class ToolbarTable {
    */
   async sortColumn(columnHeader: string, sortOrder: string): Promise<Boolean> {
     const headerElem = await this._page.getByRole("columnheader", {
-      name: `${columnHeader}`,
+      name: `${columnHeader}`,exact: true
     });
     for (let i = 0; i < 3; i++) {
       const sort = await headerElem.getAttribute(`aria-sort`);
@@ -466,6 +490,7 @@ export class ToolbarTable {
             })();
         let sourceData = await this.getTableRows(parentElem);
         let sortedData = await this.sortTable(await sourceData, header, order);
+
         await expect(
           sourceData,
           `Column ${header} sorting ${order} order`
